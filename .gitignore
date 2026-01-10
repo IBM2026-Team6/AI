@@ -1,2 +1,10 @@
 IBM-hackathon-program
 *.pdf
+.env
+
+# dir
+.venv/
+chroma_db/
+.cache_upstage/
+docs/
+__pycache__/
