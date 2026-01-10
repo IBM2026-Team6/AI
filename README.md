@@ -36,7 +36,7 @@ LLM 및 Embedding 제공자는 **IBM Watsonx** 또는 **Upstage(Solar)** 중 선
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-
+```
 
 Upstage 연동을 위해 `langchain-openai` 패키지가 필요하며,
 해당 패키지는 `requirements.txt`에 이미 포함되어 있습니다.
@@ -94,7 +94,7 @@ Upstage 연동을 위해 `langchain-openai` 패키지가 필요하며,
 API_KEY=your_ibm_api_key
 PROJECT_ID=your_ibm_project_id
 IBM_CLOUD_URL=https://us-south.ml.cloud.ibm.com
-```
+
 
 ### Upstage
 
