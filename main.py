@@ -57,12 +57,20 @@ def main():
         default="general",
         help="발표 대상 선택: expert(전문가) | general(비전문가)"
     )   
+    parser.add_argument(
+        "--nonverbal",
+        choices=["y", "n"],
+        default="n",
+        help="비언어적 표현 포함 여부: Yes | no"
+    )
+
     args = parser.parse_args()
 
     print("="*80)
     print("발표 대본 자동 생성 시스템")
     print(f"API: {args.api.upper()}")
     print(f"Audience: {args.audience}")
+    print(f"Nonverbal: {args.nonverbal}")
     print("="*80)
 
     # API 공통 변수 초기화 (IBM URL은 IBM 모드에서만 설정)
@@ -180,7 +188,8 @@ def main():
     slide_chain = build_slide_chain(
         llm,
         retriever,
-        audience=args.audience
+        audience=args.audience,
+        nonverbal=(args.nonverbal == "y")
     )
 
     for paper_path in paper_pdfs:
