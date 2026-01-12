@@ -51,11 +51,18 @@ def main():
         default="ibm",
         help="사용할 API 선택: ibm (Watsonx) 또는 upstage (Solar)"
     )
+    parser.add_argument(
+        "--audience",
+        choices=["expert", "general"],
+        default="general",
+        help="발표 대상 선택: expert(전문가) | general(비전문가)"
+    )   
     args = parser.parse_args()
 
     print("="*80)
     print("발표 대본 자동 생성 시스템")
     print(f"API: {args.api.upper()}")
+    print(f"Audience: {args.audience}")
     print("="*80)
 
     # API 공통 변수 초기화 (IBM URL은 IBM 모드에서만 설정)
@@ -170,7 +177,11 @@ def main():
     os.makedirs(cfg.out_dir, exist_ok=True)
     os.makedirs(cfg.cache_dir, exist_ok=True)
 
-    slide_chain = build_slide_chain(llm, retriever)
+    slide_chain = build_slide_chain(
+        llm,
+        retriever,
+        audience=args.audience
+    )
 
     for paper_path in paper_pdfs:
         # paper는 Upstage가 훨씬 잘 뽑히는 경우가 많아서 우선 사용
