@@ -130,12 +130,39 @@ docs/
 ```bash
 python main.py --api upstage
 ```
-
 ### IBM Watsonx 사용
 
 ```bash
 python main.py --api ibm
 ```
+
+실행 시 `--audience` 인자로 사용할 제공자를 선택합니다.
+
+### 비전문가 대상
+
+```bash
+python main.py --audience general
+```
+### 전문가 대상
+
+```bash
+python main.py --audience expert
+```
+
+실행 시 `--nonverbal` 인자로 사용할 제공자를 선택합니다.
+
+### 비언어적 표현 여부 O
+
+```bash
+python main.py --nonverbal y
+```
+### 비언어적 표현 여부 X
+
+```bash
+python main.py --nonverbal n
+```
+
+
 
 실행이 완료되면 `outputs/` 폴더에 발표 대본 파일이 생성됩니다.
 
