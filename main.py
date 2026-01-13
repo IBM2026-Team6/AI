@@ -5,10 +5,13 @@
 - docs 폴더의 report/docs를 벡터 DB로 구축해 RAG 참고자료로 사용
 - paper.pdf를 페이지별로 파싱하여 각 페이지의 발표 대본을 생성
 - IBM Watsonx 또는 Upstage(Solar) API를 CLI로 선택해 사용
+- 옵션에 따라 키워드 추출 기능을 켜거나 끔
 
 실행 예시:
     python main.py --api upstage
     python main.py --api ibm
+    python main.py --api upstage --extractor y
+    python main.py --api upstage --extractor n
 """
 import os
 import glob
@@ -27,6 +30,9 @@ from rag.splitters import split_docs
 from rag.vectorstore import build_or_load_chroma
 from generation.chains import build_slide_chain
 from generation.postprocess import postprocess_script
+
+# keyword_extractor 임포트
+from extractor.keyword_extractor import extract_keywords_per_slide, LLMConfig as KeywordLLMConfig
 
 
 def list_pdfs(folder: str) -> List[str]:
@@ -63,6 +69,12 @@ def main():
         default="n",
         help="비언어적 표현 포함 여부: Yes | no"
     )
+    parser.add_argument(
+        "--extractor",
+        choices=["y", "n"],
+        default="n",
+        help="키워드 추출 여부: y(실행) | n(건너뛰기, 기본값)"
+    )
 
     args = parser.parse_args()
 
@@ -71,6 +83,7 @@ def main():
     print(f"API: {args.api.upper()}")
     print(f"Audience: {args.audience}")
     print(f"Nonverbal: {args.nonverbal}")
+    print(f"Extractor: {args.extractor}")
     print("="*80)
 
     # API 공통 변수 초기화 (IBM URL은 IBM 모드에서만 설정)
@@ -218,7 +231,11 @@ def main():
 
         base = os.path.splitext(os.path.basename(paper_path))[0]
         out_path = os.path.join(cfg.out_dir, f"{base}_scripts.md")
+        keywords_out_path = os.path.join(cfg.out_dir, f"{base}_keywords.txt")
 
+        # 대본과 키워드를 저장할 컨테이너
+        all_scripts = []  # 전체 대본 텍스트 (키워드 추출용)
+        
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(f"# 발표 대본: {base}\n\n")
             f.write(f"- extract: upstage_document_parse (ocr={cfg.upstage_ocr})\n")
@@ -238,6 +255,8 @@ def main():
                 try:
                     raw = slide_chain.invoke(slide_text)
                     cooked = postprocess_script(raw)
+                    # 키워드 추출용으로 대본 수집
+                    all_scripts.append(f"Part {idx}: Slide {idx} ({page_no})\n{cooked}")
                 except Exception as e:
                     error_msg = str(e)
                     if "token_quota_reached" in error_msg or "403" in error_msg or "quota" in error_msg.lower():
@@ -266,6 +285,41 @@ def main():
                 f.write("\n\n---\n\n")
 
         print(f"[OK] {out_path}")
+
+        # -------------------------
+        # 3) 키워드 추출 및 저장 (keyword_extractor 사용)
+        # -------------------------
+        if args.extractor == "y":
+            print(f"\n[INFO] 키워드 추출 시작")
+            try:
+                # 전체 대본을 하나의 스크립트로 병합
+                full_script = "\n\n".join(all_scripts)
+                
+                # 키워드 추출 (다중 패스 5회)
+                keywords_result = extract_keywords_per_slide(full_script, KeywordLLMConfig(multi_pass=5))
+                
+                # 키워드를 정리된 텍스트로 저장
+                with open(keywords_out_path, "w", encoding="utf-8") as kf:
+                    import datetime
+                    kf.write(f"# 핵심 키워드: {base}\n")
+                    kf.write(f"생성 날짜: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    kf.write(f"{'='*80}\n\n")
+                    
+                    for slide_idx, keywords in sorted(keywords_result.items()):
+                        kf.write(f"## Slide {slide_idx}\n")
+                        kf.write(f"키워드 ({len(keywords)}개):\n")
+                        for i, kw in enumerate(keywords, 1):
+                            kf.write(f"  {i}. {kw}\n")
+                        kf.write("\n")
+                
+                print(f"[OK] 키워드 저장: {keywords_out_path}")
+                for slide_idx, keywords in sorted(keywords_result.items()):
+                    print(f"    Slide {slide_idx}: {', '.join(keywords)}")
+            except Exception as e:
+                print(f"[WARN] 키워드 추출 실패: {e}")
+                print(f"       키워드 추출을 건너뜁니다.")
+        else:
+            print(f"\n[INFO] 키워드 추출 건너뜀 (--extractor n)")
 
 
 if __name__ == "__main__":

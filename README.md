@@ -5,6 +5,7 @@
 
 참고자료는 RAG(LangChain) 기반으로 검색하여 근거로 활용하며,  
 LLM 및 Embedding 제공자는 **IBM Watsonx** 또는 **Upstage(Solar)** 중 선택해 사용할 수 있습니다.
+옵션 플래그로 슬라이드별 핵심 키워드 추출을 켜거나 끌 수 있습니다.
 
 ---
 
@@ -24,6 +25,8 @@ LLM 및 Embedding 제공자는 **IBM Watsonx** 또는 **Upstage(Solar)** 중 선
 - **출력**
   - `outputs/` 폴더에 슬라이드별 발표 대본 파일 생성  
     (예: `outputs/paper_scripts.md`)
+  - 선택적으로 키워드 파일 생성  
+    (예: `outputs/paper_keywords.txt`, `--extractor y` 일 때)
 
 ---
 
@@ -135,6 +138,20 @@ python main.py --api upstage
 ```bash
 python main.py --api ibm
 ```
+
+### 키워드 추출 옵션 (기본 비활성)
+
+```bash
+# 키워드 추출 비활성 (기본)
+python main.py --api upstage --extractor n
+
+# 키워드 추출 활성
+python main.py --api upstage --extractor y
+```
+
+설명:
+- `--extractor n`: 키워드 추출 건너뜀 (기본값)
+- `--extractor y`: 슬라이드별 키워드 파일 생성 (`outputs/<name>_keywords.txt`)
 
 실행 시 `--audience` 인자로 사용할 제공자를 선택합니다.
 
