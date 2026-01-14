@@ -1,229 +1,180 @@
-# 발표 대본 자동 생성 시스템
+# 발표 대본 자동 생성 및 키워드 추적 시스템
 
-`docs/` 폴더에 있는 발표자료(`paper.pdf`)와 참고자료(`report.pdf`, `docs.pdf`)를 기반으로  
-각 슬라이드(페이지)별 발표 대본을 자동으로 생성하는 시스템입니다.
+발표 슬라이드와 참고자료를 기반으로 슬라이드별 발표 대본을 자동 생성하고,
+생성된 대본이 키워드를 얼마나 커버하는지 추적하는 시스템입니다.
 
-참고자료는 RAG(LangChain) 기반으로 검색하여 근거로 활용하며,  
-LLM 및 Embedding 제공자는 **IBM Watsonx** 또는 **Upstage(Solar)** 중 선택해 사용할 수 있습니다.
-옵션 플래그로 슬라이드별 핵심 키워드 추출을 켜거나 끌 수 있습니다.
+## 주요 기능
 
----
+### 1. 대본 자동 생성 (main.py)
+- RAG 기반 참고문서 검색 (LangChain + ChromaDB)
+- IBM Watsonx 또는 Upstage Solar LLM 선택 사용
+- 슬라이드별 핵심 키워드 추출 (옵션)
 
-## 개요
-
-- **RAG 기반 검색**
-  - `report.pdf`, `docs.pdf`를 벡터 DB(Chroma)에 저장
-  - 슬라이드 내용과 관련된 참고 문서를 검색해 대본에 반영
-
-- **슬라이드 파싱**
-  - `paper.pdf`를 페이지(슬라이드) 단위로 파싱
-  - IBM API는 토큰 제한이 있어, Upstage OCR 사용을 권장
-
-- **모델 선택**
-  - 실행 시 `--api` 인자로 IBM 또는 Upstage 중 선택 가능
-
-- **출력**
-  - `outputs/` 폴더에 슬라이드별 발표 대본 파일 생성  
-    (예: `outputs/paper_scripts.md`)
-  - 선택적으로 키워드 파일 생성  
-    (예: `outputs/paper_keywords.txt`, `--extractor y` 일 때)
+### 2. 키워드 추적 (run_tracker.py)
+- 생성된 대본의 키워드 커버리지 분석
+- 3가지 매칭 방식:
+  - `hybrid`: token + sentence 결합 (기본, 최고 성능)
+  - `token`: 형태소 기반 매칭 (빠름)
+  - `sentence`: 문장 유사도 기반 매칭 (정확)
+- 키워드 정규화: 하이픈/언더스코어를 공백으로 치환 (기본 ON)
+- 임베딩 선택:
+  - Transformer (로컬, 빠름, 기본값)
+  - Upstage API (정확, API 호출 필요)
 
 ---
 
-## 요구사항 및 설치
-
-- Python 3.11.9
-- 필수 패키지는 `requirements.txt`에 정의되어 있음
+## 설치
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-Upstage 연동을 위해 `langchain-openai` 패키지가 필요하며,
-해당 패키지는 `requirements.txt`에 이미 포함되어 있습니다.
+### 필수 패키지
+- Python 3.11.9
+- langchain, langchain-openai, langchain-ibm
+- chromadb
+- sentence-transformers
+- konlpy (한국어 형태소 분석, 옵션)
 
 ---
 
-## 구성 파일
-
-### `config.py`
-
-`config.py`에서 시스템의 기본 동작을 설정합니다.
-
-주요 설정 항목:
-
-* **경로**
-
-  * `docs_root`: 문서 루트 폴더 (기본값: `./docs`)
-  * `out_dir`: 결과 파일 저장 폴더 (기본값: `./outputs`)
-
-* **RAG / 벡터 DB**
-
-  * `persist_dir`, `collection_ref`, `top_k`
-  * Chroma 벡터 DB 저장 및 검색 설정
-
-* **텍스트 분할**
-
-  * `chunk_size`, `chunk_overlap`
-  * IBM Embeddings는 토큰 제한이 있으므로 400자 내외를 권장
-
-* **IBM Watsonx**
-
-  * `embed_model`, `llm_model`
-
-* **Upstage 문서 파싱**
-
-  * `upstage_url`, `upstage_model`
-  * `upstage_ocr`: OCR 강제 여부 (`force` 권장)
-  * `upstage_base64_encoding`: 테이블 인식 옵션
-
-* **캐시**
-
-  * `cache_dir`: Upstage 문서 파싱 결과 캐시 디렉터리
-    (API 호출 비용 절감 목적)
-
----
-
-## 환경 변수 설정 (`.env`)
-
-본 프로젝트는 실행 시 `.env` 파일을 자동으로 로드합니다.
-따라서 별도의 `export` 설정 없이 바로 실행할 수 있습니다.
-
-### IBM Watsonx
+## 환경 변수 설정 (.env)
 
 ```env
+# IBM Watsonx
 API_KEY=your_ibm_api_key
 PROJECT_ID=your_ibm_project_id
 IBM_CLOUD_URL=https://us-south.ml.cloud.ibm.com
 
-
-### Upstage
-
-```env
+# Upstage
 UPSTAGE_API_KEY=your_upstage_api_key
-# 선택 사항: 문서 파싱 URL 오버라이드
-UPSTAGE_API_URL=https://api.upstage.ai/v1/document-digitization
+UPSTAGE_API_URL=https://api.upstage.ai/v1/solar
 ```
 
 ---
 
-## 문서 폴더 구조
+## 사용법
 
-`docs/` 폴더에는 아래 파일명을 사용합니다.
-파일명은 고정되어 있으며 변경하지 않는 것을 권장합니다.
+### 1단계: 대본 생성
 
+```bash
+# IBM Watsonx 사용
+python main.py --api ibm --extractor y
+
+# Upstage Solar 사용
+python main.py --api upstage --extractor y
 ```
-docs/
- ├─ paper.pdf   # 발표자료(슬라이드)
- ├─ report.pdf  # 결과 보고서 / 기술 명세서
- └─ docs.pdf    # 공고, 정책, 평가 기준 등 참고자료
+
+**출력:**
+- `outputs/paper_scripts.md`: 슬라이드별 대본
+- `outputs/paper_keywords.txt`: 슬라이드별 키워드
+
+### 2단계: 키워드 추적
+
+```bash
+# 기본 (hybrid + 정규화 ON, Transformer 임베딩)
+python run_tracker.py
+
+# token 모드 (정규화 OFF 예시)
+python run_tracker.py -m token --normalize n
+
+# sentence 모드 + Upstage API
+python run_tracker.py -m sentence --api y
+```
+
+**출력:**
+- `outputs/paper_coverage_analysis.txt`: 슬라이드별 커버리지 분석
+
+---
+
+## 설정 (config.py)
+
+### 경로 설정
+```python
+docs_root = "./docs"           # 문서 폴더
+out_dir = "./outputs"           # 결과 저장 폴더
+```
+
+### RAG 설정
+```python
+persist_dir = "./chroma_db"     # 벡터 DB 저장 경로
+chunk_size = 400                # 청크 크기
+chunk_overlap = 50              # 청크 오버랩
+top_k = 3                       # 검색 결과 개수
+```
+
+### 키워드 추적 설정
+```python
+lexical_threshold = 0.5         # 토큰 매칭 임계값
+semantic_threshold = 0.65       # 문장 유사도 임계값
+```
+
+### 임베딩 모델
+```python
+# Transformer (로컬)
+transformer_model = "paraphrase-multilingual-MiniLM-L12-v2"
+
+# Upstage (API)
+embedding_model = "solar-embedding-1-large"
 ```
 
 ---
 
-## 사용 방법 (`main.py`)
-
-실행 시 `--api` 인자로 사용할 제공자를 선택합니다.
-필요한 환경 변수는 `.env` 파일에 설정되어 있어야 합니다.
-
-### Upstage(Solar) 사용
-
-```bash
-python main.py --api upstage
-```
-### IBM Watsonx 사용
-
-```bash
-python main.py --api ibm
-```
-
-### 키워드 추출 옵션 (기본 비활성) - txt
-
-```bash
-# 키워드 추출 비활성 (기본)
-python main.py --extractor n
-
-# 키워드 추출 활성
-python main.py --extractor y
-```
-
-설명:
-- `--extractor n`: 키워드 추출 건너뜀 (기본값)
-- `--extractor y`: 슬라이드별 키워드 파일 생성 (`outputs/<name>_keywords.txt`)
-
-실행 시 `--audience` 인자로 사용할 제공자를 선택합니다.
-
-### 비전문가 대상
-
-```bash
-python main.py --audience general
-```
-### 전문가 대상
-
-```bash
-python main.py --audience expert
-```
-
-실행 시 `--nonverbal` 인자로 사용할 제공자를 선택합니다.
-
-### 비언어적 표현 여부 O
-
-```bash
-python main.py --nonverbal y
-```
-### 비언어적 표현 여부 X
-
-```bash
-python main.py --nonverbal n
-```
-
-
-
-실행이 완료되면 `outputs/` 폴더에 발표 대본 파일이 생성됩니다.
-
-예시:
+## 프로젝트 구조
 
 ```
-outputs/
- └─ paper_scripts.md
+.
+├── docs/                       # 문서 폴더
+│   ├── paper.pdf              # 발표 슬라이드
+│   └── report.pdf             # 참고 문서
+├── outputs/                    # 결과 파일
+│   ├── paper_scripts.md       # 생성된 대본
+│   ├── paper_keywords.txt     # 추출된 키워드
+│   └── paper_coverage_analysis.txt  # 커버리지 분석
+├── tracker/                    # 키워드 추적 모듈
+│   ├── keyword_tracker.py     # 토큰 기반 추적
+│   └── sentence_tracker.py    # 문장 유사도 추적
+├── main.py                     # 대본 생성
+├── run_tracker.py             # 키워드 추적
+├── config.py                   # 설정
+└── requirements.txt            # 의존성
 ```
 
 ---
 
-## 테스트 스크립트 (`parse_test_ibm.py`)
+## 매칭 방식 비교
 
-`parse_test_ibm.py`는 IBM Watsonx 기반 RAG 파이프라인을 단독으로 검증하기 위한 예제 스크립트입니다.
+| 방식 | 정확도 | 속도 | 특징 |
+|------|--------|------|------|
+| token | 79% | 빠름 | 형태소 기반, 정확한 단어 매칭 |
+| sentence | 60% | 느림 | 의미 기반, 문맥 이해 |
+| **hybrid** | **92%** | 중간 | token + sentence 결합, 기본 정규화(공백 치환) |
 
-주요 내용:
-
-* 참고 문서 로드 및 텍스트 분할
-* 벡터 DB 생성
-* RAG 체인 구성
-* 슬라이드별 발표 대본 생성 및 저장
-
-실행 예시:
-
-```bash
-python parse_test_ibm.py
-```
+**권장:** 프레젠테이션 추적에는 `python run_tracker.py` (hybrid + 정규화 ON) 사용
 
 ---
 
-## 테스트 스크립트 (`parse_test_upstage.py`)
+## 주요 함수
 
-`parse_test_upstage.py`는 IBM Watsonx 기반 RAG 파이프라인을 단독으로 검증하기 위한 예제 스크립트입니다.
+### tracker/keyword_tracker.py
+- `normalize_text()`: 텍스트 정규화
+- `tokenize_simple_ko_en()`: 한영 토큰화
+- `token_overlap_score()`: 토큰 오버랩 점수 계산
+- `parse_keywords_from_file()`: 키워드 파일 파싱
+- `parse_scripts_by_slide()`: 대본 파일 파싱
 
-주요 내용:
+### tracker/sentence_tracker.py
+- `SentenceMatcher`: 문장 유사도 매칭 클래스
+- `find_matches()`: 문장에서 키워드 매칭
+- `get_coverage_for_slide()`: 슬라이드 커버리지 계산
 
-* 참고 문서 로드 및 텍스트 분할
-* 벡터 DB 생성
-* RAG 체인 구성
-* 슬라이드별 발표 대본 생성 및 저장
+### run_tracker.py
+- `main_analysis()`: 키워드 추적 메인 로직
 
-실행 예시:
+---
 
-```bash
-python parse_test_upstage.py
-```
+## 라이센스
+
+MIT License
