@@ -139,14 +139,14 @@ python main.py --api upstage
 python main.py --api ibm
 ```
 
-### 키워드 추출 옵션 (기본 비활성)
+### 키워드 추출 옵션 (기본 비활성) - txt
 
 ```bash
 # 키워드 추출 비활성 (기본)
-python main.py --api upstage --extractor n
+python main.py --extractor n
 
 # 키워드 추출 활성
-python main.py --api upstage --extractor y
+python main.py --extractor y
 ```
 
 설명:
