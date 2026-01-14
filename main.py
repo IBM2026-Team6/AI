@@ -54,7 +54,7 @@ def main():
     parser.add_argument(
         "--api",
         choices=["ibm", "upstage"],
-        default="ibm",
+        default="upstage",
         help="사용할 API 선택: ibm (Watsonx) 또는 upstage (Solar)"
     )
     parser.add_argument(
