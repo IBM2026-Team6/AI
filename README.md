@@ -148,9 +148,9 @@ embedding_model = "solar-embedding-1-large"
 
 | 방식 | 정확도 | 속도 | 특징 |
 |------|--------|------|------|
-| token | 79% | 빠름 | 형태소 기반, 정확한 단어 매칭 |
-| sentence | 60% | 느림 | 의미 기반, 문맥 이해 |
-| **hybrid** | **92%** | 중간 | token + sentence 결합, 기본 정규화(공백 치환) |
+| token | 89% | 빠름 | 형태소 기반, 정확한 단어 매칭 |
+| sentence | 82% | 느림 | 의미 기반, 문맥 이해 |
+| **hybrid** | **95.9%** | 중간 | token + sentence 결합, 기본 정규화(공백 치환) |
 
 **권장:** 프레젠테이션 추적에는 `python run_tracker.py` (hybrid + 정규화 ON) 사용
 
