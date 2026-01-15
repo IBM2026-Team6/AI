@@ -8,3 +8,4 @@ chroma_db/
 .cache_upstage/
 docs/
 __pycache__/
+outputs/
